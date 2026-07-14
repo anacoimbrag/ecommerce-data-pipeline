@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: customer_profile
+    description: >
+      Perfil completo de cliente (identidade + PII + as mesmas métricas de
+      RFM e comportamento de `dim_customers`), simulando o profile store de
+      uma CDP real. Fonte para segmentações complexas, análises
+      individuais, vitrines e campanhas personalizadas. Materializado no
+      schema `activation`, separado de `marts`, para não ser varrido pelo
+      export indiscriminado de `marts.*` para o BigQuery. Não é
+      referenciada pelos fatos — `dim_customers` é a FK do star schema.
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]

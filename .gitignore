@@ -4,6 +4,7 @@ output/*.duckdb.wal
 logs/
 *.log
 .env
+secrets/
 __pycache__/
 *.egg-info/
 .venv/

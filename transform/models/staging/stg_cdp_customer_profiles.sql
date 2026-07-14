@@ -16,6 +16,9 @@ with parsed as (
         cast(identity_emails as struct(address varchar, isPrimary boolean, verified boolean)[]) as emails,
         cast(identity_phones as struct(number varchar, type varchar, verified boolean)[]) as phones
     from {{ source('raw', 'cdp_customer_profiles') }}
+    -- raw é append-only e não tem chave primária configurada no loader, então
+    -- recargas do mesmo perfil geram linhas duplicadas; mantém uma por cliente.
+    qualify row_number() over (partition by identity_cdpid order by identity_cdpid) = 1
 )
 select
     customer_id,

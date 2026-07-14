@@ -20,9 +20,11 @@ models:
 
   - name: dim_customers
     description: >
-      Uma linha por cliente do CDP, com dados de identidade e perfil
-      enriquecidos por métricas de compra (padrão RFM: recência, frequência
-      e valor) e por sinais de comportamento e localização derivados do GA4.
+      Dimensão analítica de cliente, sem PII: recorte não-identificável de
+      `customer_profile` (sem nome, documento, e-mail ou data de nascimento
+      exata) com métricas de compra (padrão RFM: recência, frequência e
+      valor) e sinais de comportamento e localização derivados do GA4. Uso
+      para análises consolidadas/BI e como FK dos fatos.
     columns:
       - name: customer_id
         tests: [not_null, unique]

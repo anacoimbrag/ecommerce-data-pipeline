@@ -28,6 +28,18 @@ services:
       - ./output:/output
       - ./transform:/app
 
+  bq-export:
+    build: ./scripts
+    command: ["python", "export_marts_to_bigquery.py"]
+    env_file:
+      - .env
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/service-account.json
+    volumes:
+      - ./output:/output:ro
+      - ./secrets:/secrets:ro
+
 networks:
   cdp-shared-net:
     external: true

@@ -15,6 +15,9 @@ models:
     marts:
       +materialized: table
       +schema: marts
+    activation:
+      +materialized: table
+      +schema: activation
 
 # Descarta o schema raw ao final de um build bem-sucedido. Desativado.
 # on-run-end:
