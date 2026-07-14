@@ -88,3 +88,7 @@ opcionalmente, `primary_keys`.
   `{{ ref('stg_...') }}` e adicione descrição e testes no `schema.yml` da
   pasta — todo modelo deve ter ao menos `not_null` + `unique` na chave
   primária.
+
+## Licença
+
+Distribuído sob a licença [MIT](LICENSE).
