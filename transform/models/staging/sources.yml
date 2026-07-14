@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: >
+      Landing zone (Bronze) carregada pelo Meltano a partir da API
+      ecomm-data (categorias, promoções, afiliados, produtos, perfis de
+      clientes e pedidos) e por scripts/load_ga4_customer_behavior.py
+      (comportamento de clientes no GA4, agregado a partir dos arquivos de
+      export locais).
+    tables:
+      - name: categories
+      - name: promotions
+      - name: affiliates
+      - name: products
+      - name: cdp_customer_profiles
+      - name: orders
+      - name: ga4_customer_behavior

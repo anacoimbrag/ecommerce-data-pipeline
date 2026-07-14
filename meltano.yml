@@ -1,0 +1,55 @@
+version: 1
+default_environment: dev
+project_id: agentic-cdp
+
+environments:
+  - name: dev
+
+plugins:
+  extractors:
+    - name: tap-rest-api-msdk
+      variant: widen
+      pip_url: tap-rest-api-msdk "setuptools<81"
+      config:
+        api_url: ${ECOMM_DATA_API_URL}
+        pagination_request_style: page_number_paginator
+        next_page_token_path: "$.pagination.hasNextPage"
+        streams:
+          - name: categories
+            path: /categories
+            records_path: "$[*]"
+            primary_keys: [id]
+          - name: promotions
+            path: /promotions
+            records_path: "$[*]"
+            primary_keys: [name]
+          - name: affiliates
+            path: /affiliates
+            records_path: "$[*]"
+            primary_keys: [id]
+          - name: cdp_customer_profiles
+            path: /profiles
+            records_path: "$.profiles[*]"
+          - name: products
+            path: /products
+            records_path: "$.products[*]"
+            primary_keys: [productId]
+          - name: orders
+            path: /orders
+            records_path: "$.orders[*]"
+            primary_keys: [orderId]
+
+  loaders:
+    - name: target-duckdb
+      variant: meltanolabs
+      pip_url: git+https://github.com/MeltanoLabs/target-duckdb.git
+      config:
+        path: ${MELTANO_PROJECT_ROOT}/output/warehouse.duckdb
+        default_target_schema: raw
+        # cdp_customer_profiles não tem chave primária plana; landing zone é append-only.
+        primary_key_required: false
+
+jobs:
+  - name: el_ecomm_data
+    tasks:
+      - tap-rest-api-msdk target-duckdb

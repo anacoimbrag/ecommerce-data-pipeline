@@ -1,0 +1,14 @@
+.meltano/
+output/*.duckdb
+output/*.duckdb.wal
+logs/
+*.log
+.env
+__pycache__/
+*.egg-info/
+.venv/
+transform/target/
+transform/dbt_packages/
+transform/logs/
+transform/.user.yml
+.claude/

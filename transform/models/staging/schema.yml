@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: stg_categories
+    description: >
+      Uma linha por categoria de produto, com a árvore de categorias achatada
+      em nós (raiz, grupo e folha) e a referência à categoria pai.
+    columns:
+      - name: category_id
+        tests: [not_null, unique]
+
+  - name: stg_promotions
+    description: >
+      Uma linha por promoção/campanha, com nome, tipo, período de validade e
+      o `utm_campaign` usado para relacionar a promoção aos pedidos.
+    columns:
+      - name: promotion_name
+        tests: [not_null, unique]
+      - name: utm_campaign
+        tests: [not_null, unique]
+
+  - name: stg_affiliates
+    description: >
+      Uma linha por afiliado ou parceiro de marketplace, com dados de
+      contato, loja e taxa de comissão.
+    columns:
+      - name: affiliate_id
+        tests: [not_null, unique]
+
+  - name: stg_products
+    description: >
+      Uma linha por produto (grão de produto-pai), com marca, categoria e
+      faixas de preço. Os SKUs (variações de tamanho/cor) ficam em
+      `bundle_items_json` e são desmembrados por dim_products.
+    columns:
+      - name: product_id
+        tests: [not_null, unique]
+
+  - name: stg_cdp_customer_profiles
+    description: >
+      Uma linha por cliente do CDP, com os campos de identidade e perfil
+      (nome, documento, contatos, preferências de comunicação) limpos e
+      normalizados.
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+
+  - name: stg_customer_orders
+    description: >
+      Uma linha por pedido, a partir da API de pedidos do ecomm-data. Traz
+      valor, status, canal de venda, forma de pagamento e afiliado, e é a
+      base para as métricas de compra do cliente.
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_cdp_customer_profiles')
+                field: customer_id
+      - name: affiliate_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_affiliates')
+                field: affiliate_id
+
+  - name: stg_customer_order_items
+    description: Uma linha por item de pedido, desmembrada de raw.orders.items[].
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customer_orders')
+                field: order_id
+
+  - name: stg_customer_refunds
+    description: >
+      Uma linha por reembolso — os pedidos cancelados, com data e valor do
+      reembolso.
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customer_orders')
+                field: order_id
+
+  - name: stg_ga4_customer_behavior
+    description: >
+      Uma linha por cliente do CDP, com os sinais de comportamento do GA4 já
+      agregados (localização, dispositivo, categoria/marca visualizadas e
+      métricas de atividade).
+    columns:
+      - name: user_pseudo_id
+        tests: [not_null, unique]

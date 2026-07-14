@@ -1,0 +1,33 @@
+services:
+  meltano:
+    image: meltano/meltano:v3-python3.11
+    working_dir: /project
+    env_file:
+      - .env
+    volumes:
+      - .:/project
+    networks:
+      - cdp-shared-net
+    command: ["--help"]
+
+  ga4-loader:
+    build: ./scripts
+    env_file:
+      - .env
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+    volumes:
+      - ./output:/output
+      - ../ga4_bigquery_export:/ga4_source:ro
+
+  dbt:
+    build: ./transform
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+    volumes:
+      - ./output:/output
+      - ./transform:/app
+
+networks:
+  cdp-shared-net:
+    external: true

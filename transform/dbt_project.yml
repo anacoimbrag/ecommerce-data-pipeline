@@ -1,0 +1,21 @@
+name: agentic_cdp
+version: "1.0.0"
+config-version: 2
+profile: agentic_cdp
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  agentic_cdp:
+    staging:
+      +materialized: ephemeral
+    marts:
+      +materialized: table
+      +schema: marts
+
+# Descarta o schema raw ao final de um build bem-sucedido. Desativado.
+# on-run-end:
+#   - "{{ drop_raw_schema_if_successful() }}"

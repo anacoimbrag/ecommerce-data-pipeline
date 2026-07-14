@@ -1,0 +1,226 @@
+version: 2
+
+models:
+  - name: dim_categories
+    description: Uma linha por categoria de produto.
+    columns:
+      - name: category_id
+        tests: [not_null, unique]
+
+  - name: dim_products
+    description: >
+      Uma linha por SKU (variação de tamanho/cor), com os atributos do
+      produto-pai (nome, marca, categoria, preços) denormalizados em cada
+      SKU. Agrupe por `product_id` para voltar ao nível de produto-pai.
+    columns:
+      - name: sku_id
+        tests: [not_null, unique]
+      - name: product_id
+        tests: [not_null]
+
+  - name: dim_customers
+    description: >
+      Uma linha por cliente do CDP, com dados de identidade e perfil
+      enriquecidos por métricas de compra (padrão RFM: recência, frequência
+      e valor) e por sinais de comportamento e localização derivados do GA4.
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: total_revenue
+        tests: [not_null]
+
+  - name: dim_brands
+    description: Uma linha por marca.
+    columns:
+      - name: brand_id
+        tests: [not_null, unique]
+
+  - name: dim_date
+    description: >
+      Calendário com uma linha por dia, cobrindo o intervalo de datas de
+      pedidos observado nos dados.
+    columns:
+      - name: order_date
+        tests: [not_null, unique]
+
+  - name: dim_payment_methods
+    description: >
+      Uma linha por forma de pagamento. `payment_method_id` é a chave natural
+      e `payment_method_name` o rótulo de exibição.
+    columns:
+      - name: payment_method_id
+        tests: [not_null, unique]
+      - name: payment_method_name
+        tests: [not_null]
+
+  - name: dim_order_status
+    description: >
+      Uma linha por status de pedido. `order_status_id` é a descrição em
+      português (chave natural), `order_status_code` o código técnico e
+      `status_name` o rótulo de exibição.
+    columns:
+      - name: order_status_id
+        tests: [not_null, unique]
+      - name: status_name
+        tests: [not_null]
+
+  - name: dim_channel
+    description: >
+      Uma linha por canal de venda: 1 Site, 2 App, 4 Marketplace.
+    columns:
+      - name: channel_id
+        tests: [not_null, unique]
+
+  - name: dim_affiliates
+    description: >
+      Uma linha por afiliado ou parceiro de marketplace. `value_accumulated`
+      é a receita total dos pedidos atribuídos ao afiliado.
+    columns:
+      - name: affiliate_id
+        tests: [not_null, unique]
+      - name: value_accumulated
+        tests: [not_null]
+
+  - name: dim_promotions
+    description: >
+      Uma linha por promoção/campanha. A chave `promotion_id` é o
+      `utm_campaign` da campanha.
+    columns:
+      - name: promotion_id
+        tests: [not_null, unique]
+
+  - name: fct_customer_orders
+    description: >
+      Uma linha por pedido (grão de pedido). Contém os valores do pedido e as
+      chaves para cliente, promoção, forma de pagamento, status, canal,
+      afiliado e data.
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+      - name: promotion_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_promotions')
+                field: promotion_id
+      - name: payment_method_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_payment_methods')
+                field: payment_method_id
+      - name: order_status_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_order_status')
+                field: order_status_id
+      - name: affiliate_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_affiliates')
+                field: affiliate_id
+      - name: channel_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_channel')
+                field: channel_id
+      - name: order_date
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: order_date
+
+  - name: fct_order_line
+    description: >
+      Uma linha por item de pedido (grão de linha). Contém as métricas de
+      quantidade e valor da linha e as chaves para produto, categoria, marca,
+      cliente, pedido, canal, promoção, forma de pagamento, status, afiliado
+      e data.
+    columns:
+      - name: sku_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: sku_id
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+      - name: product_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_id
+      - name: category_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_categories')
+                field: category_id
+      - name: brand_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_brands')
+                field: brand_id
+      - name: promotion_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_promotions')
+                field: promotion_id
+      - name: payment_method_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_payment_methods')
+                field: payment_method_id
+      - name: order_status_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_order_status')
+                field: order_status_id
+      - name: channel_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_channel')
+                field: channel_id
+      - name: affiliate_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_affiliates')
+                field: affiliate_id
+      - name: order_date
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: order_date
