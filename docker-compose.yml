@@ -1,4 +1,16 @@
 services:
+  metabase:
+    build: ./metabase
+    image: metabase_duckdb:latest
+    container_name: metabase_duckdb
+    ports:
+      - "3001:3000"
+    environment:
+      - MB_DB_FILE=/home/metabase/data/metabase.db
+    volumes:
+      - ./output:/data:ro
+      - ./metabase/data:/home/metabase/data
+
   meltano:
     image: meltano/meltano:v3-python3.11
     working_dir: /project
