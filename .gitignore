@@ -1,6 +1,7 @@
 .meltano/
 output/*.duckdb
 output/*.duckdb.wal
+output/*.sqlite
 logs/
 *.log
 .env

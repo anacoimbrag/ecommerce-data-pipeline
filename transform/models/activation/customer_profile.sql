@@ -56,6 +56,97 @@ favorite_brand as (
 -- Comportamento e localização do GA4, unidos por user_pseudo_id.
 behavior as (
     select * from {{ ref('stg_ga4_customer_behavior') }}
+),
+
+-- Segmento/tier calculados por ml/segmentation/train_kmeans.py + rotulados
+-- em feat_customer_segment_labels.sql (caso de uso 1: clusterização
+-- dinâmica). Clientes sem histórico de compra não entram no K-Means, então
+-- ficam sem cluster_id/segment_label — tratados como 'no_purchase' abaixo.
+segments as (
+    select * from {{ ref('feat_customer_segment_labels') }}
+),
+
+-- Próxima campanha sugerida (caso de uso 2), em 4 camadas de prioridade:
+-- 1) modelo de propensão (ml/campaigns/train_propensity.py) quando o
+--    cliente tem exposição registrada; 2) conversão histórica do segmento
+--    do cliente; 3) conversão histórica geral; 4) promoção ativa mais
+--    recente, como último recurso.
+propensity_ranked as (
+    select
+        cp.customer_id,
+        cp.promotion_id,
+        cp.propensity_score,
+        cp.propensity_score * coalesce(r.avg_order_value, 0) as expected_value,
+        row_number() over (
+            partition by cp.customer_id
+            order by cp.propensity_score * coalesce(r.avg_order_value, 0) desc
+        ) as rn
+    from {{ source('raw', 'campaign_propensity') }} cp
+    inner join {{ ref('dim_promotions') }} dp on cp.promotion_id = dp.promotion_id
+    left join {{ ref('feat_rfm_features') }} r on cp.customer_id = r.customer_id
+    where dp.is_active and not dp.is_archived
+),
+best_propensity as (
+    select customer_id, promotion_id, expected_value as score
+    from propensity_ranked
+    where rn = 1
+),
+
+segment_fallback_ranked as (
+    select
+        s.customer_id,
+        sca.promotion_id,
+        sca.conversion_rate,
+        row_number() over (
+            partition by s.customer_id
+            order by sca.rank_in_segment
+        ) as rn
+    from segments s
+    inner join {{ ref('segment_campaign_affinity') }} sca
+        on s.segment_label = sca.segment_label
+    where sca.rank_in_segment = 1
+),
+best_segment_fallback as (
+    select customer_id, promotion_id, conversion_rate as score
+    from segment_fallback_ranked
+    where rn = 1
+),
+
+-- Subselects escalares (não `limit 1` sobre um join/cross join) para
+-- garantir sempre exatamente 1 linha, mesmo quando não há nenhuma
+-- conversão histórica ainda (senão o cross join abaixo zeraria todo mundo).
+overall_fallback as (
+    select
+        (select promotion_id from {{ ref('segment_campaign_affinity') }}
+         where rank_overall = 1 limit 1) as promotion_id,
+        (select overall_conversion_rate from {{ ref('segment_campaign_affinity') }}
+         where rank_overall = 1 limit 1) as score
+),
+
+most_recent_active_promotion as (
+    select
+        (select promotion_id from {{ ref('dim_promotions') }}
+         where is_active and not is_archived
+         order by last_modified_at desc limit 1) as promotion_id
+),
+
+next_best_campaign as (
+    select
+        p.customer_id,
+        coalesce(bp.promotion_id, bsf.promotion_id, ofb.promotion_id, mrap.promotion_id)
+            as promotion_id,
+        coalesce(bp.score, bsf.score, ofb.score) as score,
+        case
+            when bp.promotion_id is not null then 'propensity_model'
+            when bsf.promotion_id is not null then 'segment_affinity'
+            when ofb.promotion_id is not null then 'overall_affinity'
+            else 'most_recent_fallback'
+        end as reason
+    from profiles p
+    left join best_propensity bp on p.customer_id = bp.customer_id
+    left join best_segment_fallback bsf on p.customer_id = bsf.customer_id
+    cross join overall_fallback ofb
+    cross join most_recent_active_promotion mrap
 )
 
 select
@@ -97,10 +188,22 @@ select
     coalesce(ra.total_refund_value, 0) as total_refund_value,
     coalesce(oa.total_revenue, 0) - coalesce(ra.total_refund_value, 0) as net_revenue,
     fc.favorite_category,
-    fb.favorite_brand
+    fb.favorite_brand,
+    s.cluster_id,
+    coalesce(s.segment_label, 'no_purchase') as segment_label,
+    s.tier,
+    s.segmented_at,
+    nbc.promotion_id as next_best_promotion_id,
+    dp.promotion_name as next_best_promotion_name,
+    nbc.score as next_best_campaign_score,
+    nbc.reason as next_best_campaign_reason,
+    current_timestamp as campaign_scored_at
 from profiles p
 left join behavior b on p.user_pseudo_id = b.user_pseudo_id
 left join order_agg oa on p.customer_id = oa.customer_id
 left join refund_agg ra on p.customer_id = ra.customer_id
 left join favorite_category fc on p.customer_id = fc.customer_id
 left join favorite_brand fb on p.customer_id = fb.customer_id
+left join segments s on p.customer_id = s.customer_id
+left join next_best_campaign nbc on p.customer_id = nbc.customer_id
+left join {{ ref('dim_promotions') }} dp on nbc.promotion_id = dp.promotion_id

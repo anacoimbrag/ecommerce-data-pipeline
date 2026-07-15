@@ -11,6 +11,11 @@ sources:
       export locais) e por scripts/load_ga4_site_traffic.py (tráfego de
       sessão do GA4 por dia/plataforma/mídia, todos os visitantes — não
       filtrado por cliente conhecido — usado para taxa de conversão real).
+      ga4_promotion_engagement também é gravada por
+      scripts/load_ga4_customer_behavior.py (exposição a campanha por
+      cliente). customer_clusters, campaign_propensity e product_similarity
+      são gravadas pelos scripts de treino em ml/ (saída crua dos modelos de
+      ML, consumida pelos models de activation/).
     tables:
       - name: categories
       - name: promotions
@@ -20,3 +25,7 @@ sources:
       - name: orders
       - name: ga4_customer_behavior
       - name: ga4_site_traffic
+      - name: ga4_promotion_engagement
+      - name: customer_clusters
+      - name: campaign_propensity
+      - name: product_similarity

@@ -2,7 +2,9 @@
 
 Lê os arquivos de export locais (../ga4_bigquery_export/events/*.json.gz) um
 dia por vez, filtrando pelos user_pseudo_id dos clientes conhecidos, e grava
-apenas o resultado agregado em raw.ga4_customer_behavior.
+apenas o resultado agregado em raw.ga4_customer_behavior e em
+raw.ga4_promotion_engagement (exposição a campanha por cliente, usada pelo
+modelo de propensão de campanha).
 """
 
 from __future__ import annotations
@@ -55,6 +57,7 @@ def main() -> int:
             cast(null as varchar) as geo_region,
             cast(null as varchar) as geo_city,
             cast(null as varchar) as device_category,
+            cast(null as varchar) as traffic_source_name,
             cast(null as struct(item_id varchar, item_name varchar, item_brand varchar,
                  item_variant varchar, item_category varchar, item_category2 varchar,
                  price double, quantity bigint, item_revenue double, coupon varchar,
@@ -81,6 +84,7 @@ def main() -> int:
                 g.geo.region as geo_region,
                 g.geo.city as geo_city,
                 g.device.category as device_category,
+                g.traffic_source.name as traffic_source_name,
                 g.items
             from read_json_auto('{f}') g
             inner join customer_ids c on g.user_pseudo_id = c.user_pseudo_id
@@ -194,10 +198,36 @@ def main() -> int:
         left join top_viewed_brand tvb on a.user_pseudo_id = tvb.user_pseudo_id
     """)
 
+    # Exposição a campanha por cliente: view_promotion/select_promotion,
+    # com o slug da campanha em traffic_source.name (bate com
+    # promotions.utmiCampaign). Alimenta feature/feat_promotion_engagement.sql.
+    con.execute("""
+        CREATE OR REPLACE TABLE raw.ga4_promotion_engagement AS
+        with promo_events as (
+            select user_pseudo_id, event_name, event_datetime, traffic_source_name
+            from raw._ga4_customer_events_filtered
+            where event_name in ('view_promotion', 'select_promotion')
+              and traffic_source_name is not null
+              and traffic_source_name not in ('(direct)', '(email)', '(organic)',
+                                               '(referral)', '(none)')
+        )
+        select
+            user_pseudo_id,
+            traffic_source_name as promotion_slug,
+            count(*) filter (where event_name = 'view_promotion') as view_count,
+            count(*) filter (where event_name = 'select_promotion') as select_count,
+            min(event_datetime) as first_seen_at,
+            max(event_datetime) as last_seen_at
+        from promo_events
+        group by 1, 2
+    """)
+
     con.execute("DROP TABLE raw._ga4_customer_events_filtered")
 
     total = con.execute("SELECT count(*) FROM raw.ga4_customer_behavior").fetchone()[0]
-    print(f"Done. raw.ga4_customer_behavior has {total} rows (out of {customer_count} customers).",
+    promo_total = con.execute("SELECT count(*) FROM raw.ga4_promotion_engagement").fetchone()[0]
+    print(f"Done. raw.ga4_customer_behavior has {total} rows (out of {customer_count} customers). "
+          f"raw.ga4_promotion_engagement has {promo_total} rows.",
           flush=True)
     return 0
 

@@ -51,6 +51,52 @@ services:
       - ./output:/output:ro
       - ./secrets:/secrets:ro
 
+  # Camada de ML (ver ml/README.md pra ordem completa de execução do
+  # pipeline batch). Cada serviço abaixo é um passo one-shot, igual ao
+  # `dbt`/`bq-export` acima — não roda como processo de longa duração.
+  ml-segmentation:
+    build: ./ml
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+    volumes:
+      - ./output:/output
+
+  ml-campaigns:
+    build: ./ml
+    command: ["python", "campaigns/train_propensity.py"]
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+    volumes:
+      - ./output:/output
+
+  ml-recommendations:
+    build: ./ml
+    command: ["python", "recommendations/train_item_similarity.py"]
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+    volumes:
+      - ./output:/output
+
+  ml-export:
+    build: ./ml
+    command: ["python", "export_to_serving_store.py"]
+    environment:
+      - WAREHOUSE_PATH=/output/warehouse.duckdb
+      - SERVING_STORE_PATH=/output/serving_store.sqlite
+    volumes:
+      - ./output:/output
+
+  ml-api:
+    build:
+      context: ./ml
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVING_STORE_PATH=/output/serving_store.sqlite
+    volumes:
+      - ./output:/output:ro
+
 networks:
   cdp-shared-net:
     external: true

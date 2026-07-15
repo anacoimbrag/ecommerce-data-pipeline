@@ -1,0 +1,7 @@
+duckdb
+pytz
+scikit-learn
+numpy
+scipy
+fastapi
+uvicorn[standard]

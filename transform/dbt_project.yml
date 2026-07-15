@@ -12,6 +12,9 @@ models:
   agentic_cdp:
     staging:
       +materialized: ephemeral
+    feature:
+      +materialized: table
+      +schema: feature
     marts:
       +materialized: table
       +schema: marts
