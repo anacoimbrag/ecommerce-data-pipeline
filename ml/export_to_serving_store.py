@@ -2,8 +2,7 @@
 activation.*) num arquivo SQLite de leitura, pra API (ml/api/) consumir sem
 disputar o DuckDB (single-file) com o dbt/treino.
 
-Mesmo espírito de scripts/export_marts_to_bigquery.py: não reprocessa nada,
-só copia tabelas já prontas. Rode depois do `dbt build` completo (a versão
+Não reprocessa nada, só copia tabelas já prontas. Rode depois do `dbt build` completo (a versão
 que já materializou customer_profile/customer_showcase com as colunas de
 ML).
 """

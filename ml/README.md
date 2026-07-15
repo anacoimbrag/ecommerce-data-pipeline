@@ -42,8 +42,8 @@ docker compose run --rm ml-export
 docker compose up -d ml-api
 ```
 
-Passos 1–4 são o mesmo tipo de job one-shot que `dbt build`/`bq-export` já
-são hoje — dá pra encadear num único script de cron, sem orquestrador novo.
+Passos 1–4 são o mesmo tipo de job one-shot que `dbt build` já é hoje — dá
+pra encadear num único script de cron, sem orquestrador novo.
 
 ## Por que Python só treina
 

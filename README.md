@@ -10,14 +10,11 @@ O fluxo é: **Meltano** extrai da API `ecomm-data` e do GA4 e carrega no schema
 ## Estrutura
 
 - `meltano.yml` — configuração dos plugins e do job de extração/carga (EL).
-- `docker-compose.yml` — quatro serviços: `meltano` (EL), `ga4-loader`
-  (carga do comportamento de clientes do GA4), `dbt` (transformação) e
-  `bq-export` (publica `marts.*` no BigQuery para o Looker Studio).
+- `docker-compose.yml` — três serviços: `meltano` (EL), `ga4-loader`
+  (carga do comportamento de clientes do GA4) e `dbt` (transformação).
 - `scripts/load_ga4_customer_behavior.py` — lê os arquivos de export do GA4
   (`../ga4_bigquery_export/events/*.json.gz`), filtra pelos clientes
   conhecidos, agrega por cliente e grava em `raw.ga4_customer_behavior`.
-- `scripts/export_marts_to_bigquery.py` — copia cada tabela de `marts.*` do
-  DuckDB para o BigQuery (load com `WRITE_TRUNCATE`, sem reprocessar SQL).
 - `transform/` — projeto dbt (`dbt-duckdb`): modelos `staging` alimentam os
   modelos `marts`.
 - `output/warehouse.duckdb` — arquivo DuckDB de destino (ignorado pelo git).
@@ -74,34 +71,6 @@ docker compose run --rm dbt show --inline "select * from marts.dim_customers lim
 ```
 
 (ou abra `output/warehouse.duckdb` em qualquer cliente DuckDB.)
-
-## Exportar marts para o Looker Studio (BigQuery)
-
-O warehouse é um arquivo DuckDB local, que o Looker Studio não lê
-diretamente. `bq-export` publica as tabelas já materializadas em `marts.*`
-(sem reprocessar SQL) num dataset do BigQuery, que o Looker Studio consome
-pelo conector nativo do BigQuery.
-
-Setup (uma vez):
-
-1. Crie (ou reaproveite) um projeto no GCP e um dataset no BigQuery — o
-   dataset é criado automaticamente pelo script se não existir.
-2. Crie uma service account com os papéis **BigQuery Data Editor** e
-   **BigQuery Job User**, gere uma chave JSON e salve em
-   `./secrets/service-account.json` (pasta ignorada pelo git).
-3. Em `.env`, defina `GCP_PROJECT` (e opcionalmente `BQ_DATASET`, padrão
-   `agentic_cdp`).
-
-Rodar depois de todo `dbt build`:
-
-```bash
-docker compose run --rm bq-export
-```
-
-No Looker Studio: **Criar fonte de dados → BigQuery → escolha o projeto,
-dataset e tabela** (uma fonte por tabela de `marts`, ou combine via *blend*).
-Para manter os dashboards atualizados, agende `dbt build` seguido de
-`bq-export` (ex.: cron ou orquestrador).
 
 ## Adicionar um endpoint do ecomm-data
 
