@@ -6,10 +6,9 @@
 # O ecomm-data roda separado (../ecomm-data/stack.sh up/down) -- não é
 # gerenciado daqui, só precisa estar no ar antes de `./stack.sh data`. A
 # camada de ML também roda separado (../ecomm-ml/stack.sh ml/export/ml-api/
-# ml-web) -- ver ecomm-ml/README.md; entre `ml` (treino) e `export`, o
-# pipeline de lá exige rodar manualmente o `dbt build` deste projeto
-# (`./stack.sh data` cobre staging+marts; o `dbt build` completo com
-# activation/* é manual -- ver mensagem de erro do `ecomm-ml/stack.sh ml`).
+# ml-web) -- ver ecomm-ml/README.md; tem seu próprio projeto dbt
+# (../ecomm-ml/transform, feature/activation), que lê staging/marts daqui
+# via source() -- só precisa deste `./stack.sh data` já ter rodado antes.
 #
 # Uso:
 #   ./stack.sh up        # garante clickhouse no ar
@@ -147,9 +146,9 @@ cmd_data() {
   fi
   deactivate
 
-  log "dbt build (staging + marts + feature views base; activation/* fica pro ./stack.sh ml)"
+  log "dbt build (staging + marts)"
   source .venv-dbt/bin/activate
-  (cd transform && dbt build --exclude path:models/activation feat_customer_segment_labels)
+  (cd transform && dbt build)
   deactivate
 
   log "pipeline de dados completo."

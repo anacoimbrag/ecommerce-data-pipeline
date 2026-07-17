@@ -23,17 +23,21 @@ abaixo.
 - `stack.sh` — sobe/derruba tudo: ClickHouse nativo, pipeline de dados
   (meltano + GA4 + dbt) e `dashboard` (Metabase) como comando separado. O
   `ecomm-data` roda à parte via `../ecomm-data/stack.sh`, e a camada de ML
-  roda à parte via `../ecomm-ml/stack.sh` (entre o treino e o export de lá,
-  é preciso rodar manualmente o `dbt build` deste projeto).
+  roda totalmente à parte via `../ecomm-ml/stack.sh` — projeto irmão
+  independente, com seu próprio dbt (só depende de `staging`/`marts` já
+  materializados aqui, lidos via `source()`; nada é chamado deste projeto
+  pra lá nem vice-versa).
 - `scripts/load_ga4_customer_behavior.py` e `scripts/load_ga4_site_traffic.py`
   — leem os arquivos de export do GA4 (`../ga4_bigquery_export/events/*.json.gz`)
   em paralelo (tabelas e cursors incrementais disjuntos, sem contenção): o
   primeiro filtra pelos clientes conhecidos e agrega por cliente em
   `raw.ga4_customer_behavior`; o segundo agrega tráfego de todos os
   visitantes em `raw.ga4_site_traffic`.
-- `transform/` — projeto dbt (`dbt-clickhouse`): modelos `staging` alimentam
-  os modelos `marts`.
-- ML (segmentação, próxima campanha, vitrine personalizada): projeto irmão
+- `transform/` — projeto dbt (`dbt-clickhouse`): modelos `staging`
+  (materializados como `view`, não `ephemeral` — de propósito, pra
+  `../ecomm-ml/transform` conseguir lê-los via `source()`) alimentam os
+  modelos `marts`. `feature/` e `activation/` (segmentação, próxima
+  campanha, vitrine personalizada) vivem no projeto irmão
   [ecomm-ml](../ecomm-ml), ver [ecomm-ml/README.md](../ecomm-ml/README.md).
 - O warehouse ClickHouse persiste em
   `${XDG_DATA_HOME:-~/.local/share}/clickhouse-agentic-cdp/data/` (fora do
@@ -78,9 +82,7 @@ configurada) antes do primeiro run.
 (cd ../ecomm-data && ./stack.sh up)  # fonte de dados que o meltano extrai (ver README do projeto)
 ./stack.sh up                         # garante o ClickHouse no ar
 ./stack.sh data                       # meltano (ecomm-data -> raw) + GA4 (comportamento + tráfego, em paralelo) -> dbt build (staging + marts)
-(cd ../ecomm-ml && ./stack.sh ml)     # treino de ML (para com erro pedindo o dbt build abaixo)
-source .venv-dbt/bin/activate && (cd transform && dbt build) && deactivate  # completo (+ activation/*), pré-requisito do export
-(cd ../ecomm-ml && ./stack.sh export) # publica activation/* no serving store
+(cd ../ecomm-ml && ./stack.sh ml)     # pipeline de ML completo e independente: dbt build (feature) -> treino -> dbt build (completo) -> export
 ```
 
 `./stack.sh down` para o ClickHouse, o Metabase, o `ecomm-data` (via
@@ -96,9 +98,8 @@ dbt docs generate
 python3 -m http.server --directory target 8080   # abrir http://localhost:8080
 ```
 
-Camada de ML (segmentação, próxima campanha, vitrine personalizada): ver
-[ecomm-ml/README.md](../ecomm-ml/README.md) pra entender a ordem completa
-`ml` (treino) → `dbt build` (manual, aqui) → `export`.
+Camada de ML (segmentação, próxima campanha, vitrine personalizada): projeto
+irmão independente, ver [ecomm-ml/README.md](../ecomm-ml/README.md).
 
 ## Inspecionar o resultado
 
@@ -137,11 +138,24 @@ opcionalmente, `primary_keys`.
 
 - **Staging**: crie um `.sql` em `transform/models/staging/` fazendo
   `select` de `{{ source('raw', '<tabela>') }}` (declarada em
-  `sources.yml`). Mantém-se `ephemeral` por padrão.
+  `sources.yml`). Materializado como `view` por padrão — de propósito, não
+  `ephemeral`, pra ficar visível fisicamente no ClickHouse e poder ser lido
+  via `source()` pelo projeto irmão `../ecomm-ml/transform` (se um novo
+  model de staging só interessa a este projeto, `ephemeral` continua válido
+  como override pontual).
 - **Marts**: crie um `.sql` em `transform/models/marts/` a partir de
   `{{ ref('stg_...') }}` e adicione descrição e testes no `schema.yml` da
   pasta — todo modelo deve ter ao menos `not_null` + `unique` na chave
-  primária.
+  primária. Cuidado pra não criar um `ref()` na direção contrária (marts
+  dependendo de um model de `../ecomm-ml/transform/models/activation/`) —
+  isso cria um ciclo entre os dois projetos dbt; se `feature`/`activation`
+  precisar disso, quem lê de quem é sempre `ecomm-ml` lendo daqui via
+  `source()`, nunca o inverso (ver `dim_customers.sql`, que recalcula direto
+  das staging sources em vez de depender de `activation.customer_profile`
+  por esse motivo).
+- **Feature/Activation** (segmentação, próxima campanha, vitrine
+  personalizada): vivem em `../ecomm-ml/transform`, não aqui — ver
+  [ecomm-ml/README.md](../ecomm-ml/README.md).
 
 ## Licença
 

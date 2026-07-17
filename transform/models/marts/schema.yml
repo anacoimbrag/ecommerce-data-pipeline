@@ -20,11 +20,13 @@ models:
 
   - name: dim_customers
     description: >
-      Dimensão analítica de cliente, sem PII: recorte não-identificável de
-      `customer_profile` (sem nome, documento, e-mail ou data de nascimento
-      exata) com métricas de compra (padrão RFM: recência, frequência e
-      valor) e sinais de comportamento e localização derivados do GA4. Uso
-      para análises consolidadas/BI e como FK dos fatos.
+      Dimensão analítica de cliente, sem PII: mesmo recorte não-identificável
+      de `customer_profile` (../ecomm-ml/transform/models/activation/), mas
+      recalculado direto das staging sources aqui (sem nome, documento,
+      e-mail ou data de nascimento exata) com métricas de compra (padrão
+      RFM: recência, frequência e valor) e sinais de comportamento e
+      localização derivados do GA4. Uso para análises consolidadas/BI e
+      como FK dos fatos.
     columns:
       - name: customer_id
         tests: [not_null, unique]

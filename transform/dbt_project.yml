@@ -11,18 +11,14 @@ clean-targets: ["target", "dbt_packages"]
 models:
   agentic_cdp:
     staging:
-      +materialized: ephemeral
-    feature:
-      +materialized: table
-      +schema: feature
-      +engine: MergeTree
+      # view (não ephemeral) de propósito: o projeto irmão ../ecomm-ml/transform
+      # lê esses modelos via source() (staging/*) -- ephemeral não existe
+      # fisicamente no banco, só funciona inline dentro do mesmo projeto dbt.
+      +materialized: view
+      +schema: staging
     marts:
       +materialized: table
       +schema: marts
-      +engine: MergeTree
-    activation:
-      +materialized: table
-      +schema: activation
       +engine: MergeTree
 
 # Descarta o schema raw ao final de um build bem-sucedido. Desativado.
