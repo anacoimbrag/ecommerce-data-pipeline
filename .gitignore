@@ -18,3 +18,4 @@ transform/.user.yml
 .venv-meltano/
 metabase/metabase.jar
 .stack-*.log
+plugins/sample-database.sqlite
