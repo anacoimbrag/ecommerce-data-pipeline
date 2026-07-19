@@ -11,7 +11,7 @@ clean-targets: ["target", "dbt_packages"]
 models:
   agentic_cdp:
     staging:
-      # view (não ephemeral) de propósito: o projeto irmão ../ecomm-ml/transform
+      # view (não ephemeral) de propósito: o projeto irmão ../ecommerce-machine-learning/transform
       # lê esses modelos via source() (staging/*) -- ephemeral não existe
       # fisicamente no banco, só funciona inline dentro do mesmo projeto dbt.
       +materialized: view

@@ -14,8 +14,8 @@ sources:
       ga4_promotion_engagement também é gravada por
       scripts/load_ga4_customer_behavior.py, e customer_clusters,
       campaign_propensity e product_similarity pelos scripts de treino do
-      projeto irmão ../ecomm-ml -- essas 4 não são consumidas por nenhum
-      model deste projeto (só por ../ecomm-ml/transform), então ficam
+      projeto irmão ../ecommerce-machine-learning -- essas 4 não são consumidas por nenhum
+      model deste projeto (só por ../ecommerce-machine-learning/transform), então ficam
       declaradas lá, não aqui.
     tables:
       - name: categories

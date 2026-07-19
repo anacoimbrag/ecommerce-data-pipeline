@@ -21,7 +21,7 @@ models:
   - name: dim_customers
     description: >
       Dimensão analítica de cliente, sem PII: mesmo recorte não-identificável
-      de `customer_profile` (../ecomm-ml/transform/models/activation/), mas
+      de `customer_profile` (../ecommerce-machine-learning/transform/models/activation/), mas
       recalculado direto das staging sources aqui (sem nome, documento,
       e-mail ou data de nascimento exata) com métricas de compra (padrão
       RFM: recência, frequência e valor) e sinais de comportamento e

@@ -5,9 +5,9 @@
 #
 # O ecommerce-synthetic-data roda separado (../ecommerce-synthetic-data/stack.sh up/down) -- não é
 # gerenciado daqui, só precisa estar no ar antes de `./stack.sh data`. A
-# camada de ML também roda separado (../ecomm-ml/stack.sh ml/export/ml-api/
-# ml-web) -- ver ecomm-ml/README.md; tem seu próprio projeto dbt
-# (../ecomm-ml/transform, feature/activation), que lê staging/marts daqui
+# camada de ML também roda separado (../ecommerce-machine-learning/stack.sh ml/export/ml-api/
+# ml-web) -- ver ecommerce-machine-learning/README.md; tem seu próprio projeto dbt
+# (../ecommerce-machine-learning/transform, feature/activation), que lê staging/marts daqui
 # via source() -- só precisa deste `./stack.sh data` já ter rodado antes.
 #
 # Uso:
@@ -15,7 +15,7 @@
 #   ./stack.sh data       # pipeline ETL/ELT: EL ecommerce-synthetic-data+GA4 -> raw -> dbt (staging+marts)
 #   ./stack.sh download-metabase # baixa metabase/metabase.jar (~500MB), uma vez
 #   ./stack.sh dashboard         # sobe o metabase em background (:3001)
-#   ./stack.sh down       # para clickhouse, metabase, ecommerce-synthetic-data (via ../ecommerce-synthetic-data/stack.sh down) e ecomm-ml (via ../ecomm-ml/stack.sh down)
+#   ./stack.sh down       # para clickhouse, metabase, ecommerce-synthetic-data (via ../ecommerce-synthetic-data/stack.sh down) e ecommerce-machine-learning (via ../ecommerce-machine-learning/stack.sh down)
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
@@ -206,7 +206,7 @@ cmd_down() {
     fi
   done
   (cd ../ecommerce-synthetic-data && ./stack.sh down)
-  [ -x ../ecomm-ml/stack.sh ] && (cd ../ecomm-ml && ./stack.sh down)
+  [ -x ../ecommerce-machine-learning/stack.sh ] && (cd ../ecommerce-machine-learning && ./stack.sh down)
 }
 
 case "${1:-}" in

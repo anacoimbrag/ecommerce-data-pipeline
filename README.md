@@ -23,7 +23,7 @@ abaixo.
 - `stack.sh` — sobe/derruba tudo: ClickHouse nativo, pipeline de dados
   (meltano + GA4 + dbt) e `dashboard` (Metabase) como comando separado. O
   `ecommerce-synthetic-data` roda à parte via `../ecommerce-synthetic-data/stack.sh`, e a camada de ML
-  roda totalmente à parte via `../ecomm-ml/stack.sh` — projeto irmão
+  roda totalmente à parte via `../ecommerce-machine-learning/stack.sh` — projeto irmão
   independente, com seu próprio dbt (só depende de `staging`/`marts` já
   materializados aqui, lidos via `source()`; nada é chamado deste projeto
   pra lá nem vice-versa).
@@ -35,10 +35,10 @@ abaixo.
   visitantes em `raw.ga4_site_traffic`.
 - `transform/` — projeto dbt (`dbt-clickhouse`): modelos `staging`
   (materializados como `view`, não `ephemeral` — de propósito, pra
-  `../ecomm-ml/transform` conseguir lê-los via `source()`) alimentam os
+  `../ecommerce-machine-learning/transform` conseguir lê-los via `source()`) alimentam os
   modelos `marts`. `feature/` e `activation/` (segmentação, próxima
   campanha, vitrine personalizada) vivem no projeto irmão
-  [ecomm-ml](../ecomm-ml), ver [ecomm-ml/README.md](../ecomm-ml/README.md).
+  [ecommerce-machine-learning](../ecommerce-machine-learning), ver [ecommerce-machine-learning/README.md](../ecommerce-machine-learning/README.md).
 - O warehouse ClickHouse persiste em
   `${XDG_DATA_HOME:-~/.local/share}/clickhouse-ecommerce-data-pipeline/data/`
   (fora do repo).
@@ -82,11 +82,11 @@ configurada) antes do primeiro run.
 (cd ../ecommerce-synthetic-data && ./stack.sh up)  # fonte de dados que o meltano extrai (ver README do projeto)
 ./stack.sh up                         # garante o ClickHouse no ar
 ./stack.sh data                       # meltano (ecommerce-synthetic-data -> raw) + GA4 (comportamento + tráfego, em paralelo) -> dbt build (staging + marts)
-(cd ../ecomm-ml && ./stack.sh ml)     # pipeline de ML completo e independente: dbt build (feature) -> treino -> dbt build (completo) -> export
+(cd ../ecommerce-machine-learning && ./stack.sh ml)     # pipeline de ML completo e independente: dbt build (feature) -> treino -> dbt build (completo) -> export
 ```
 
 `./stack.sh down` para o ClickHouse, o Metabase, o `ecommerce-synthetic-data` (via
-`../ecommerce-synthetic-data/stack.sh down`) e o `ecomm-ml` (via `../ecomm-ml/stack.sh down`).
+`../ecommerce-synthetic-data/stack.sh down`) e o `ecommerce-machine-learning` (via `../ecommerce-machine-learning/stack.sh down`).
 
 Pra rodar dbt manualmente (outros subcomandos além de `build`, por exemplo
 gerar documentação):
@@ -99,7 +99,7 @@ python3 -m http.server --directory target 8080   # abrir http://localhost:8080
 ```
 
 Camada de ML (segmentação, próxima campanha, vitrine personalizada): projeto
-irmão independente, ver [ecomm-ml/README.md](../ecomm-ml/README.md).
+irmão independente, ver [ecommerce-machine-learning/README.md](../ecommerce-machine-learning/README.md).
 
 ## Inspecionar o resultado
 
@@ -140,22 +140,22 @@ opcionalmente, `primary_keys`.
   `select` de `{{ source('raw', '<tabela>') }}` (declarada em
   `sources.yml`). Materializado como `view` por padrão — de propósito, não
   `ephemeral`, pra ficar visível fisicamente no ClickHouse e poder ser lido
-  via `source()` pelo projeto irmão `../ecomm-ml/transform` (se um novo
+  via `source()` pelo projeto irmão `../ecommerce-machine-learning/transform` (se um novo
   model de staging só interessa a este projeto, `ephemeral` continua válido
   como override pontual).
 - **Marts**: crie um `.sql` em `transform/models/marts/` a partir de
   `{{ ref('stg_...') }}` e adicione descrição e testes no `schema.yml` da
   pasta — todo modelo deve ter ao menos `not_null` + `unique` na chave
   primária. Cuidado pra não criar um `ref()` na direção contrária (marts
-  dependendo de um model de `../ecomm-ml/transform/models/activation/`) —
+  dependendo de um model de `../ecommerce-machine-learning/transform/models/activation/`) —
   isso cria um ciclo entre os dois projetos dbt; se `feature`/`activation`
-  precisar disso, quem lê de quem é sempre `ecomm-ml` lendo daqui via
+  precisar disso, quem lê de quem é sempre `ecommerce-machine-learning` lendo daqui via
   `source()`, nunca o inverso (ver `dim_customers.sql`, que recalcula direto
   das staging sources em vez de depender de `activation.customer_profile`
   por esse motivo).
 - **Feature/Activation** (segmentação, próxima campanha, vitrine
-  personalizada): vivem em `../ecomm-ml/transform`, não aqui — ver
-  [ecomm-ml/README.md](../ecomm-ml/README.md).
+  personalizada): vivem em `../ecommerce-machine-learning/transform`, não aqui — ver
+  [ecommerce-machine-learning/README.md](../ecommerce-machine-learning/README.md).
 
 ## Licença
 

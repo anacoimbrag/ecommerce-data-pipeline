@@ -1,11 +1,11 @@
 {{ config(order_by=['customer_id']) }}
 -- Dimensão analítica: mesmo recorte não-identificável de customer_profile
--- (ver ../ecomm-ml/transform/models/activation/customer_profile.sql), sem
+-- (ver ../ecommerce-machine-learning/transform/models/activation/customer_profile.sql), sem
 -- PII (nome, documento, e-mail, data de nascimento exata). Uso em
 -- BI/agregações. Recalculado direto das staging sources aqui (mesma lógica
 -- de lá) em vez de dbt ref() em customer_profile -- ref() só funciona
 -- dentro do mesmo projeto dbt, e customer_profile vive no projeto irmão
--- ecomm-ml, que por sua vez já lê staging/marts daqui via source(); um
+-- ecommerce-machine-learning, que por sua vez já lê staging/marts daqui via source(); um
 -- ref() daqui pra lá criaria um ciclo entre os dois projetos.
 with profiles as (
     select * from {{ ref('stg_cdp_customer_profiles') }}

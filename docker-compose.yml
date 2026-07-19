@@ -93,9 +93,9 @@ services:
     volumes:
       - ./transform:/app
 
-  # Camada de ML: projeto irmão ../ecomm-ml (ver ecomm-ml/README.md), fora
+  # Camada de ML: projeto irmão ../ecommerce-machine-learning (ver ecommerce-machine-learning/README.md), fora
   # deste compose -- conecta neste ClickHouse pela rede externa
-  # "cdp-shared-net" (ver ecomm-ml/docker-compose.yml).
+  # "cdp-shared-net" (ver ecommerce-machine-learning/docker-compose.yml).
 
 networks:
   cdp-shared-net:
