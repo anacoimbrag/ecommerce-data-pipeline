@@ -13,7 +13,7 @@
 # Uso:
 #   ./stack.sh up        # garante clickhouse no ar
 #   ./stack.sh data       # pipeline ETL/ELT: EL ecommerce-synthetic-data+GA4 -> raw -> dbt (staging+marts)
-#   ./stack.sh reset-data # dropa os databases raw e staging (pede confirmação), pra reiniciar o pipeline do zero
+#   ./stack.sh reset-data # dropa as tabelas de raw carregadas pela API + o database staging (pede confirmação); preserva raw.ga4_* (GA4)
 #   ./stack.sh download-metabase # baixa metabase/metabase.jar (~500MB), uma vez
 #   ./stack.sh dashboard         # sobe o metabase em background (:3001)
 #   ./stack.sh backup-dashboard  # compacta metabase/data e envia pro Cloudflare R2 via wrangler (ver CLOUDFLARE_*/R2_BUCKET no .env)
@@ -201,24 +201,29 @@ cmd_data() {
 
 cmd_reset_data() {
   start_clickhouse
-  log "reset-data: isso vai APAGAR todos os dados em '${CLICKHOUSE_DATABASE}' e 'staging' (raw + staging)."
+  # Tabelas de raw carregadas pela API ecommerce-synthetic-data via meltano (ver
+  # transform/models/sources.yml). As tabelas GA4 (ga4_customer_behavior,
+  # ga4_site_traffic, ga4_promotion_engagement -- carregadas por
+  # scripts/load_ga4_*.py) ficam de fora de propósito e são preservadas.
+  local api_tables=(categories promotions affiliates products cdp_customer_profiles orders)
+  log "reset-data: isso vai APAGAR raw.{${api_tables[*]}} (dados da API) e o database 'staging' inteiro (views, reconstruídas pelo próximo dbt build)."
+  log "reset-data: raw.ga4_customer_behavior, raw.ga4_site_traffic e raw.ga4_promotion_engagement são preservados."
   read -r -p "Confirma? [y/N] " confirm
   if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
     log "reset-data: cancelado"
     return
   fi
-  for db in "${CLICKHOUSE_DATABASE}" staging; do
-    log "reset-data: dropando database '$db'"
+  for t in "${api_tables[@]}"; do
+    log "reset-data: dropando tabela '${CLICKHOUSE_DATABASE}.$t'"
     curl -sf -u "${CLICKHOUSE_USER}:${CLICKHOUSE_PASSWORD}" \
-      --data-binary "DROP DATABASE IF EXISTS $db" \
+      --data-binary "DROP TABLE IF EXISTS ${CLICKHOUSE_DATABASE}.$t" \
       "http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/" >/dev/null
   done
-  # meltano/GA4 esperam '${CLICKHOUSE_DATABASE}' já existente (mesmo hook de
-  # start_clickhouse na primeira subida).
+  log "reset-data: dropando database 'staging'"
   curl -sf -u "${CLICKHOUSE_USER}:${CLICKHOUSE_PASSWORD}" \
-    --data-binary "CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}" \
+    --data-binary "DROP DATABASE IF EXISTS staging" \
     "http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}/" >/dev/null
-  log "reset-data: concluído. Rode ./stack.sh data para reconstruir o pipeline do zero."
+  log "reset-data: concluído. Rode ./stack.sh data para recarregar a API e reconstruir staging+marts (dados do GA4 preservados)."
 }
 
 cmd_download_metabase() {
